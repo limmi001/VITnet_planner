@@ -3,8 +3,8 @@ import torch
 import torch.nn
 import torch.nn.functional as F
 import torch.nn.utils.spectral_norm as spectral_norm
-from policy.models.resnet import resnet18
-from ViTsubmodules import *
+from .resnet import resnet18
+from .ViTsubmodules import *
 
 def refine_inputs(X):
 
@@ -35,7 +35,7 @@ class LSTMNetVIT(torch.nn.Module):
         ])
 
         self.decoder = spectral_norm(torch.nn.Linear(4608, 512))
-        self.lstm = (torch.nn.LSTM(input_size=517, hidden_size=128,
+        self.lstm = (torch.nn.LSTM(input_size=512, hidden_size=128,
                          num_layers=3, dropout=0.1))
         self.nn_fc2 = spectral_norm(torch.nn.Linear(128, 3))
 
@@ -45,6 +45,10 @@ class LSTMNetVIT(torch.nn.Module):
 
     def forward(self, X):
 
+        # Handle input: if X is a tensor (depth image), wrap it in list format
+        if isinstance(X, torch.Tensor):
+            X = [X, None, None]
+        
         X = refine_inputs(X)
 
         x = X[0]
@@ -55,11 +59,8 @@ class LSTMNetVIT(torch.nn.Module):
         out = torch.cat([self.pxShuffle(out[1]),self.up_sample(out[0])],dim=1) 
         out = self.down_sample(out)
         out = self.decoder(out.flatten(1))
-        out = torch.cat([out, X[1]/10, X[2]], dim=1).float()
-        if len(X)>3:
-            out,h = self.lstm(out, X[3])
-        else:
-            out,h = self.lstm(out)
+        # Only use depth feature, remove dependency on X[1] and X[2]
+        out,h = self.lstm(out)
         out = self.nn_fc2(out)
         return out, h
 

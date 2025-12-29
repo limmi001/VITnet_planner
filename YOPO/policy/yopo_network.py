@@ -27,6 +27,10 @@ class YopoNetwork(nn.Module):
         self.state_backbone = nn.Sequential()
         self.yopo_head = YopoHead(hidden_state + observation_dim, output_dim)
 
+    '''
+        1. depth_feature:  feature of Resnet18
+        2. obs_feature: feature of state (v_xyz, a_xyz, goal_xyz)
+    '''
     def forward(self, depth: torch.Tensor, obs: torch.Tensor) -> torch.Tensor:
         """
             forward propagation of neural network
