@@ -19,12 +19,8 @@ class OLNetwork(nn.Module):
     def __init__(self):
         super(OLNetwork, self).__init__()
         # Use LSTMNetVIT as backbone
+        # LSTMNetVIT already outputs (batch, 3, 20) directly
         self.backbone = LSTMNetVIT()
-        
-        # Output projection layer
-        # LSTMNetVIT outputs (out, h) where out shape is (1, 3) from nn_fc2
-        # We need to project this to (batch, 3, 20)
-        self.output_projection = nn.Linear(3, 3 * 20)
 
     def forward(self, depth: torch.Tensor) -> torch.Tensor:
         """
@@ -35,15 +31,8 @@ class OLNetwork(nn.Module):
         Returns:
             endstate: output with shape (batch, 3, 20)
         """
-        batch_size = depth.shape[0]
-        
-        # Forward through backbone (now only needs depth)
-        out, h = self.backbone(depth)
-        # out shape: (batch, 3) from nn_fc2 Linear layer
-        
-        # Project to (batch, 3*20) then reshape to (batch, 3, 20)
-        endstate = self.output_projection(out)  # (batch, 60)
-        endstate = endstate.view(batch_size, 3, 20)  # (batch, 3, 20)
+        # Forward through backbone (LSTMNetVIT already outputs (batch, 3, 20))
+        endstate, h = self.backbone(depth)
         
         return endstate
 

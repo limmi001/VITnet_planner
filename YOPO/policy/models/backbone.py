@@ -6,20 +6,20 @@ import torch.nn.utils.spectral_norm as spectral_norm
 from .resnet import resnet18
 from .ViTsubmodules import *
 
-def refine_inputs(X):
+# def refine_inputs(X):
 
-    # fill quaternion rotation if not given
-    # make it [1, 0, 0, 0] repeated with numrows = X[0].shape[0]
-    if X[2] is None:
-        # X[2] = torch.Tensor([1, 0, 0, 0]).float()
-        X[2] = torch.zeros((X[0].shape[0], 4)).float().to(X[0].device)
-        X[2][:, 0] = 1
+#     # fill quaternion rotation if not given
+#     # make it [1, 0, 0, 0] repeated with numrows = X[0].shape[0]
+#     if X[2] is None:
+#         # X[2] = torch.Tensor([1, 0, 0, 0]).float()
+#         X[2] = torch.zeros((X[0].shape[0], 4)).float().to(X[0].device)
+#         X[2][:, 0] = 1
 
-    # if input depth images are not of right shape, resize
-    if X[0].shape[-2] != 60 or X[0].shape[-1] != 90:
-        X[0] = F.interpolate(X[0], size=(60, 90), mode='bilinear')
+#     # if input depth images are not of right shape, resize
+#     if X[0].shape[-2] != 60 or X[0].shape[-1] != 90:
+#         X[0] = F.interpolate(X[0], size=(60, 90), mode='bilinear')
 
-    return X
+#     return X
 
 
 class LSTMNetVIT(torch.nn.Module):
@@ -37,31 +37,43 @@ class LSTMNetVIT(torch.nn.Module):
         self.decoder = spectral_norm(torch.nn.Linear(4608, 512))
         self.lstm = (torch.nn.LSTM(input_size=512, hidden_size=128,
                          num_layers=3, dropout=0.1))
-        self.nn_fc2 = spectral_norm(torch.nn.Linear(128, 3))
+        self.nn_fc2 = spectral_norm(torch.nn.Linear(128, 60))
 
         self.up_sample = torch.nn.Upsample(size=(16,24), mode='bilinear', align_corners=True)
         self.pxShuffle = torch.nn.PixelShuffle(upscale_factor=2)
         self.down_sample = torch.nn.Conv2d(48,12,3, padding = 1)
 
-    def forward(self, X):
+    def forward(self, depth: torch.Tensor) -> torch.Tensor:
+        """
+        Forward pass that accepts only a depth tensor.
 
-        # Handle input: if X is a tensor (depth image), wrap it in list format
-        if isinstance(X, torch.Tensor):
-            X = [X, None, None]
-        
-        X = refine_inputs(X)
+        Args:
+            depth: Tensor of shape (batch, 1, H, W). Will be resized to (60,90) if needed.
 
-        x = X[0]
+        Returns:
+            out: Tensor of shape (batch, 3)
+            h: LSTM hidden tuple (h_n, c_n)
+        """
+        # ensure depth has expected spatial size for the ViT encoder
+        if depth.shape[-2] != 60 or depth.shape[-1] != 90:
+            depth = F.interpolate(depth, size=(60, 90), mode='bilinear')
+
+        x = depth
         embeds = [x]
         for block in self.encoder_blocks:
-            embeds.append(block(embeds[-1]))        
+            embeds.append(block(embeds[-1]))
+
         out = embeds[1:]
-        out = torch.cat([self.pxShuffle(out[1]),self.up_sample(out[0])],dim=1) 
+        out = torch.cat([self.pxShuffle(out[1]), self.up_sample(out[0])], dim=1)
         out = self.down_sample(out)
-        out = self.decoder(out.flatten(1))
-        # Only use depth feature, remove dependency on X[1] and X[2]
-        out,h = self.lstm(out)
-        out = self.nn_fc2(out)
+        out = self.decoder(out.flatten(1))  # (batch, 512)
+
+        # make sequence dim explicit for LSTM: (seq_len=1, batch, input_size)
+        out = out.unsqueeze(0)
+        out, h = self.lstm(out)
+        out = self.nn_fc2(out)  # (1, batch, 60)
+        out = out.squeeze(0)    # (batch, 60)
+        out = out.reshape(-1, 3, 20)  # (batch, 3, 20)
         return out, h
 
 
