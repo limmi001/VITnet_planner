@@ -43,15 +43,16 @@ class LSTMNetVIT(torch.nn.Module):
         self.pxShuffle = torch.nn.PixelShuffle(upscale_factor=2)
         self.down_sample = torch.nn.Conv2d(48,12,3, padding = 1)
 
-    def forward(self, depth: torch.Tensor) -> torch.Tensor:
+    def forward(self, depth: torch.Tensor, obs_feature: torch.Tensor = None) -> torch.Tensor:
         """
-        Forward pass that accepts only a depth tensor.
+        Forward pass that accepts depth tensor and optional obs feature.
 
         Args:
             depth: Tensor of shape (batch, 1, H, W). Will be resized to (60,90) if needed.
+            obs_feature: Optional tensor of shape (batch, obs_dim). Will be concatenated with depth features.
 
         Returns:
-            out: Tensor of shape (batch, 3)
+            out: Tensor of shape (batch, 3, 20)
             h: LSTM hidden tuple (h_n, c_n)
         """
         # ensure depth has expected spatial size for the ViT encoder
@@ -67,6 +68,10 @@ class LSTMNetVIT(torch.nn.Module):
         out = torch.cat([self.pxShuffle(out[1]), self.up_sample(out[0])], dim=1)
         out = self.down_sample(out)
         out = self.decoder(out.flatten(1))  # (batch, 512)
+
+        # concatenate obs_feature if provided
+        if obs_feature is not None:
+            out = torch.cat([out, obs_feature], dim=1)  # (batch, 512 + obs_dim)
 
         # make sequence dim explicit for LSTM: (seq_len=1, batch, input_size)
         out = out.unsqueeze(0)

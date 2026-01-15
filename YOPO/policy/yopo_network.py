@@ -35,8 +35,8 @@ class YopoNetwork(nn.Module):
         """
             forward propagation of neural network
         """
-        depth_feature = self.image_backbone(depth)
-        obs_feature = self.state_backbone(obs)
+        depth_feature = self.image_backbone(depth) 
+        obs_feature = self.state_backbone(obs)     
         input_tensor = torch.cat((obs_feature, depth_feature), 1)
         output = self.yopo_head(input_tensor)
         endstate = torch.tanh(output[:, :9])  # [batch, 9, vertical_num, horizon_num]
@@ -52,8 +52,8 @@ class YopoNetwork(nn.Module):
             obs: current state in the body frame.
             return: end state in the body frame
         """
-        obs = self.state_transform.normalize_obs(obs)
-        obs = self.state_transform.prepare_input(obs)
+        obs = self.state_transform.normalize_obs(obs) #归一化
+        obs = self.state_transform.prepare_input(obs) #[B,9,V,H]
         endstate_pred, score_pred = self.forward(depth, obs)
         endstate = self.state_transform.pred_to_endstate(endstate_pred)
         return endstate, score_pred

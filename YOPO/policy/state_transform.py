@@ -86,8 +86,9 @@ class StateTransform:
         B, N = obs.shape[0], self.lattice_primitive.traj_num
 
         # 获取所有 Rbp 并倒序排列 (由于lattice和grid的顺序相反)
-        Rbp_all = self.lattice_primitive.getRotation().flip(0)  # shape: [N, 3, 3]
-
+        # shape: [N, 3, 3] N就是有多少个grid box
+        Rbp_all = self.lattice_primitive.getRotation().flip(0)  
+        
         obs = obs.view(B, 3, 3)  # [B, 3, 3]
 
         # 扩展 obs 和 Rbp 到 [B, N, 3, 3]
