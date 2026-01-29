@@ -39,6 +39,9 @@ class LSTMNetVIT(torch.nn.Module):
                          num_layers=3, dropout=0.1))
         self.nn_fc2 = spectral_norm(torch.nn.Linear(128, 60))
 
+        # projection for optional obs_feature (maps obs_dim -> 512)
+        self.obs_proj = torch.nn.Linear(9, 512)
+
         self.up_sample = torch.nn.Upsample(size=(16,24), mode='bilinear', align_corners=True)
         self.pxShuffle = torch.nn.PixelShuffle(upscale_factor=2)
         self.down_sample = torch.nn.Conv2d(48,12,3, padding = 1)
@@ -69,9 +72,11 @@ class LSTMNetVIT(torch.nn.Module):
         out = self.down_sample(out)
         out = self.decoder(out.flatten(1))  # (batch, 512)
 
-        # concatenate obs_feature if provided
+        # incorporate obs_feature if provided by projecting and adding
         if obs_feature is not None:
-            out = torch.cat([out, obs_feature], dim=1)  # (batch, 512 + obs_dim)
+            # expect obs_feature shape: (batch, 9)
+            proj = self.obs_proj(obs_feature)  # (batch, 512)
+            out = out + proj
 
         # make sequence dim explicit for LSTM: (seq_len=1, batch, input_size)
         out = out.unsqueeze(0)
