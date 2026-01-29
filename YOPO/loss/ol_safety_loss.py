@@ -26,17 +26,17 @@ class SafetyLoss(nn.Module):
         self.r = cfg["r"]    # 势场衰减系数
         
         # B样条采样参数
-        self.eval_points = cfg.get("eval_points", 30)  # 轨迹上采样点数
-        self.bspline_degree = cfg.get("bspline_degree", 3)  # B样条阶数，默认3次
+        self.eval_points = cfg["eval_points"] if "eval_points" in cfg._data else 30  # 轨迹上采样点数
+        self.bspline_degree = cfg["bspline_degree"] if "bspline_degree" in cfg._data else 3  # B样条阶数，默认3次
         
         # 是否使用clamped B-spline（推荐True）
-        self.use_clamped = cfg.get("use_clamped_bspline", True)
+        self.use_clamped = cfg["use_clamped_bspline"] if "use_clamped_bspline" in cfg._data else True
         
         # 时间积分 vs 线积分
-        self.time_integral = cfg.get("time_integral", True)
+        self.time_integral = cfg["time_integral"] if "time_integral" in cfg._data else True
         
         # ESDF地图参数
-        self.voxel_size = cfg.get("voxel_size", 0.2)
+        self.voxel_size = cfg["voxel_size"] if "voxel_size" in cfg._data else 0.2
         self.min_bounds = None  # (N_maps, 3)
         self.max_bounds = None  # (N_maps, 3)
         self.sdf_shapes = None  # (N_maps, 3)

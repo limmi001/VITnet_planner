@@ -46,7 +46,7 @@ class OLNetTrainer:
         self.tensorboard_log = SummaryWriter(log_dir=self.tensorboard_path)
         
         # params
-        self.num_ctrl_pts = cfg.get('num_ctrl_pts', 20)  # B样条控制点数量
+        self.num_ctrl_pts = cfg['traj_num']  # B样条控制点数量
         
         # network
         print("Loading OLNetwork...")
