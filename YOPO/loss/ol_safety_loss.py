@@ -149,6 +149,9 @@ class SafetyLoss(nn.Module):
         assert dim == 3, "Expected 3D control points"
         assert N >= 4, f"Need at least 4 control points for cubic B-spline, got {N}"
         
+        # 确保 basis_matrix 在同一设备上
+        basis_matrix = self.basis_matrix.to(ctrl_pts.device)
+        
         # 生成归一化参数 u ∈ [0, 1]
         u = torch.linspace(0, 1, self.eval_points, device=ctrl_pts.device)
         
@@ -167,7 +170,7 @@ class SafetyLoss(nn.Module):
         ], dim=-1)  # (eval_points, 4)
         
         # 计算位置和速度的基函数
-        pos_basis = u_vec @ self.basis_matrix.T  # (eval_points, 4)
+        pos_basis = u_vec @ basis_matrix.T  # (eval_points, 4)
         
         # 速度基函数: d/du [1, u, u^2, u^3] = [0, 1, 2u, 3u^2]
         u_vec_derivative = torch.stack([
@@ -176,7 +179,7 @@ class SafetyLoss(nn.Module):
             2 * local_u,
             3 * local_u ** 2
         ], dim=-1)  # (eval_points, 4)
-        vel_basis = u_vec_derivative @ self.basis_matrix.T  # (eval_points, 4)
+        vel_basis = u_vec_derivative @ basis_matrix.T  # (eval_points, 4)
         
         # 对每个采样点，选择对应的4个控制点
         positions = []
@@ -216,6 +219,11 @@ class SafetyLoss(nn.Module):
         
         # 获取局部SDF地图
         sdf_maps, local_origin, local_shape = self.get_batch_sdf(pos, map_id)
+        
+        # 确保所有张量在同一设备上
+        sdf_maps = sdf_maps.to(pos.device)
+        local_origin = local_origin.to(pos.device)
+        local_shape = local_shape.to(pos.device)
         
         # 将pos转为voxel坐标: grid = (pos - min_bound) / voxel_size
         grid = (pos - local_origin.unsqueeze(1)) / self.voxel_size  # (B, N, 3)

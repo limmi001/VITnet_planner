@@ -40,6 +40,10 @@ class BSplineSmoothnessLoss(nn.Module):
         B, dim, N = ctrl_pts.shape
         assert dim == 3, "Expected 3D control points (xyz)"
         
+        # 确保权重矩阵在同一设备上
+        R_accel = self.R_accel.to(ctrl_pts.device)
+        R_smooth = self.R_smooth.to(ctrl_pts.device)
+        
         # ========== 加速度代价 (二阶差分) ==========
         if N >= 3:
             # d2 = P_{i+2} - 2*P_{i+1} + P_i
@@ -50,7 +54,7 @@ class BSplineSmoothnessLoss(nn.Module):
             )  # (B, 3, N-2)
             
             # 计算加权平方和: d2^T * R_accel * d2
-            accel_cost = torch.einsum("bcn,cd,bdn->bn", d2, self.R_accel, d2)  # (B, N-2)
+            accel_cost = torch.einsum("bcn,cd,bdn->bn", d2, R_accel, d2)  # (B, N-2)
             acceleration_cost = accel_cost.mean(dim=1)  # (B,)
         else:
             acceleration_cost = torch.zeros(B, device=ctrl_pts.device)
@@ -66,7 +70,7 @@ class BSplineSmoothnessLoss(nn.Module):
             )  # (B, 3, N-3)
             
             # 计算加权平方和: d3^T * R_smooth * d3
-            smooth_cost = torch.einsum("bcn,cd,bdn->bn", d3, self.R_smooth, d3)  # (B, N-3)
+            smooth_cost = torch.einsum("bcn,cd,bdn->bn", d3, R_smooth, d3)  # (B, N-3)
             smoothness_cost = smooth_cost.mean(dim=1)  # (B,)
         else:
             smoothness_cost = torch.zeros(B, device=ctrl_pts.device)

@@ -13,14 +13,14 @@ class GuidanceLoss(nn.Module):
     """
     def __init__(self):
         super(GuidanceLoss, self).__init__()
-        self.goal_length = cfg.get('goal_length', 1.0)
-        self.vel_dir_weight = cfg.get('vel_dir_weight', 0)  # 终点速度方向约束权重
+        self.goal_length = cfg['goal_length'] if 'goal_length' in cfg._data else 1.0
+        self.vel_dir_weight = cfg['vel_dir_weight'] if 'vel_dir_weight' in cfg._data else 0  # 终点速度方向约束权重
         
         # 损失类型选择: 'distance' 或 'similarity'
-        self.loss_type = cfg.get('guidance_loss_type', 'similarity')
+        self.loss_type = cfg['guidance_loss_type'] if 'guidance_loss_type' in cfg._data else 'similarity'
         
         # 垂直方向惩罚权重（只在similarity模式下使用）
-        self.perp_weight = cfg.get('perp_weight', 0.5)
+        self.perp_weight = cfg['perp_weight'] if 'perp_weight' in cfg._data else 0.5
         
         # 是否使用clamped B-spline（推荐True）
         # self.use_clamped = cfg.get('use_clamped_bspline', True)
