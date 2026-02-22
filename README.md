@@ -106,7 +106,8 @@ You can refer to [traj_opt.yaml](YOPO/config/traj_opt.yaml) for modification of 
 ```
 cd YOPO
 conda activate yopo
-python test_yopo_ros.py --trial=1 --epoch=50
+python test_yopo_ros.py --trial=1 --epoch=50  //YOPO
+python test_olnet_ros.py --trial=6 --epoch=50 //OL_net
 ```
 
 **4. Visualization**
